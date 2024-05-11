@@ -8,68 +8,46 @@ from bancoAlpes_app.auth0backend import getRole, getEmail
 from django.contrib.auth.decorators import login_required
 
 
+
 @login_required
 def solicitud_list(request):
-    role,email= getRole(request)
-    solicitudes = get_solicitudes()
-    solicitudes_aux=[]
-    for solicitud in solicitudes:
-           if not verificar_hash(solicitud):
-              modificar_sol_mod(solicitud)
-           if role == "user":
-             if solicitud.cliente == email:  
-                solicitudes_aux.append(solicitud)
-           else: 
-              solicitudes_aux.append(solicitud)
-           
-    solicitudes= solicitudes_aux
-            
-    context={'solicitudesList':solicitudes}    
-    return render(request, 'solicitudes/solicitudes.html',context)
-
-@login_required
-def solicitud_update(request,solicitud_id):
-   solicitud= get_solicitud(solicitud_id)
-   role,email= getRole(request)
+    role = getRole(request)
+    if role == 'admin':
+       solicitudes = get_solicitudes()
+       context = {
+           'solicitudes_list': solicitudes
+       }
+       return render(request, 'solicitudes/solicitudes.html', context)
+    else:
+        return HttpResponse('No tienes permisos para ver esta página')
     
-   if role == "user" and solicitud.cliente == email:
-    if request.method == 'POST':
-        form= SolicitudForm(request.POST, instance=solicitud)
-        if form.is_valid():
-            create_solicitud(form,email) 
-            return HttpResponseRedirect(reverse("solicitudesList"))
-        else:
-            print(form.errors) 
-    else: 
+@login_required
+def single_solicitud(request, id=0):
+    solicitud = get_solicitudes(id)
+    context = {
+        'solicitud': solicitud
+    }
+    return render(request, 'solicitudes/solicitud.html', context)
 
-        form= SolicitudForm(instance=solicitud)
-    context={
-            'form': form,
-    }    
-    return render(request,'solicitudes/update_solicitud.html',context)
-   else:
-     return HttpResponse("Unauthorized User")   
-   
 
 @login_required
 def solicitud_create(request):
-    role,email= getRole(request)
-    if role== "user":
+    role = getRole(request)
+    if role == 'admin':
         if request.method == 'POST':
             form = SolicitudForm(request.POST)
             if form.is_valid():
-                create_solicitud(form,email)
-                messages.add_message(request, messages.SUCCESS, 'Successfully created solicitud')
-                return HttpResponseRedirect(reverse('solicitudesCreate'))
+                create_solicitud(form)
+                messages.add_message(request, 'Solicitud creada correctamente')
+                return HttpResponseRedirect(reverse('solicitudCreate'))
             else:
-                print(form.errors)
+                messages.error(request, 'Error al crear la solicitud')
         else:
-        
-         form = SolicitudForm()
-
+            form = SolicitudForm()
         context = {
-            'form': form,
+            'form': form
         }
-        return render(request, 'solicitudes/create_solicitud.html', context)
+        return render(request, 'solicitudes/solicitud_create.html', context)
     else:
-        return HttpResponse("Unauthorized User") 
+        return HttpResponse('No tienes permisos para ver esta página')
+   
