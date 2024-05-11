@@ -1,102 +1,53 @@
+# ***************** Universidad de los Andes ***********************
+# ****** Departamento de Ingeniería de Sistemas y Computación ******
+# ********** Arquitectura y diseño de Software - ISIS2503 **********
+#
+# Infraestructura para laboratorio de Autenticación
+# Elementos a desplegar:
+# 1. Firewalls:
+#    - authd-firewall-django
+#    - authd-firewall-db
+# 2. Instancias MVs:
+#    - authd-django-instance (repositorio clonado y requerimientos instalados)
+#    - authd-db-instance (postgreSQL instalado y configurado)
+
 resources:
 # Firewall rules
-- name: firewall-django
+- name: authd-firewall-django
   type: compute.v1.firewall
   properties:
-    network: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/global/networks/default
+    network: https://www.googleapis.com/compute/v1/projects/sprint3prueba/global/networks/default
     priority: 1000
     direction: INGRESS
-    source-ranges: 
+    sourceRanges: 
     - 0.0.0.0/0
     targetTags:
-    - rest-django
+    - authd-django
     allowed:
     - IPProtocol: TCP
       ports: 
       - 8080
-
-- name: services-apps
+- name: authd-firewall-db
   type: compute.v1.firewall
   properties:
-    network: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/global/networks/default
+    network: https://www.googleapis.com/compute/v1/projects/sprint3prueba/global/networks/default
     priority: 1000
     direction: INGRESS
     sourceTags: 
-    - kong-circuit-breaker
+    - authd-django
     targetTags:
-    - rest-django
+    - authd-db
     allowed:
     - IPProtocol: TCP
       ports: 
-      - 8080
-
-- name: services-apps-web
-  type: compute.v1.firewall
-  properties:
-    network: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/global/networks/default
-    priority: 1000
-    direction: INGRESS
-    sourceRanges: 
-    - 0.0.0.0/0
-    targetTags:
-    - rest-django
-    allowed:
-    - IPProtocol: TCP
-      ports: 
-      - 8080
-
-- name: kong-circuit-breaker
-  type: compute.v1.firewall
-  properties:
-    network: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/global/networks/default
-    priority: 1000
-    direction: INGRESS
-    sourceRanges: 
-    - 0.0.0.0/0
-    targetTags:
-    - kong-circuit-breaker
-    allowed:
-    - IPProtocol: TCP
-      ports: 
-      - 8000
-
-- name: kong-circuit-breaker-admin
-  type: compute.v1.firewall
-  properties:
-    network: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/global/networks/default
-    priority: 1000
-    direction: INGRESS
-    sourceRanges: 
-    - 0.0.0.0/0
-    targetTags:
-    - kong-circuit-breaker
-    allowed:
-    - IPProtocol: TCP
-      ports: 
-      - 8001
-
-- name: firewall-db
-  type: compute.v1.firewall
-  properties:
-    network: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/global/networks/default
-    priority: 1000
-    direction: INGRESS
-    sourceTags: 
-    - rest-django
-    targetTags:
-    - db-instance
-    allowed:
-    - IPProtocol: TCP
-      ports: 
-      - 5432      
-
+      - 5432
 
 # Database instance
 - type: compute.v1.instance
-  name: banco-db-instance
+  name: authd-db-instance
   properties:
     zone: us-central1-a
-    machineType: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/zones/us-central1-a/machineTypes/e2-micro
+    machineType: https://www.googleapis.com/compute/v1/projects/sprint3prueba/zones/us-central1-a/machineTypes/e2-micro
     disks:
     - deviceName: boot
       type: PERSISTENT
@@ -105,14 +56,14 @@ resources:
       initializeParams:
         sourceImage: https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20240307b
     networkInterfaces:
-    - network: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/global/networks/default
-      networkIP: 10.128.0.52
+    - network: https://www.googleapis.com/compute/v1/projects/sprint3prueba/global/networks/default
+      networkIP: 10.128.0.60
       accessConfigs:
       - name: External NAT
         type: ONE_TO_ONE_NAT
     tags:
       items: 
-      - db-instance
+      - authd-db
     metadata:
       items:
       - key: startup-script
@@ -120,20 +71,19 @@ resources:
           #!/bin/bash
           sudo apt-get update
           sudo apt-get install -y postgresql postgresql-contrib
-          sudo -u postgres psql -c "CREATE USER banco_user WITH PASSWORD 'isis2503';"
-          sudo -u postgres createdb -O banco_user banco_db
+          sudo -u postgres psql -c "CREATE USER monitoring_user WITH PASSWORD 'isis2503';"
+          sudo -u postgres createdb -O monitoring_user monitoring_db
           echo "host all all 0.0.0.0/0 trust" | sudo tee -a /etc/postgresql/12/main/pg_hba.conf
           echo "listen_addresses='*'" | sudo tee -a /etc/postgresql/12/main/postgresql.conf
           echo "max_connections=2000" | sudo tee -a /etc/postgresql/12/main/postgresql.conf
           sudo service postgresql restart
 
-#BancoApp Instances: 
-
+# Monitoring app django instance
 - type: compute.v1.instance
-  name: banco-app-consultas-1
+  name: authd-django-instance
   properties:
     zone: us-central1-a
-    machineType: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/zones/us-central1-a/machineTypes/e2-micro
+    machineType: https://www.googleapis.com/compute/v1/projects/sprint3prueba/zones/us-central1-a/machineTypes/e2-micro
     disks:
     - deviceName: boot
       type: PERSISTENT
@@ -142,218 +92,25 @@ resources:
       initializeParams:
         sourceImage: https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20240307b
     networkInterfaces:
-    - network: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/global/networks/default
-      networkIP: 10.128.0.53
+    - network: https://www.googleapis.com/compute/v1/projects/sprint3prueba/global/networks/default
+      networkIP: 10.128.0.61
       accessConfigs:
       - name: External NAT
         type: ONE_TO_ONE_NAT
     tags:
       items: 
-      - rest-django
+      - authd-django
     metadata:
       items:
       - key: startup-script
         value: |
           #!/bin/bash
-          sudo apt-get update
-          sudo apt install python3-pip -y
-          sudo mkdir /sprints
-          cd /sprints
-          sudo git clone https://github.com/ISIS2503-E404-BancoAlpes/Sprint_3.git
-          cd Sprint_3/banco-app/bancoAlpes_app/
-          sudo pip3 install -r requirements.txt
-          sudo python3 manage.py makemigrations
-          sudo python3 manage.py migrate 
-          #python3 manage.py runserver 0.0.0.0:8080 &
-
-- type: compute.v1.instance
-  name: banco-app-consultas-2
-  properties:
-    zone: us-central1-a
-    machineType: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/zones/us-central1-a/machineTypes/e2-micro
-    disks:
-    - deviceName: boot
-      type: PERSISTENT
-      boot: true
-      autoDelete: true
-      initializeParams:
-        sourceImage: https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20240307b
-    networkInterfaces:
-    - network: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/global/networks/default
-      networkIP: 10.128.0.54
-      accessConfigs:
-      - name: External NAT
-        type: ONE_TO_ONE_NAT
-    tags:
-      items: 
-      - rest-django
-    metadata:
-      items:
-      - key: startup-script
-        value: |
-          #!/bin/bash
-          sudo apt-get update
-          sudo apt install python3-pip -y
-          sudo mkdir /sprints
-          cd /sprints
-          sudo git clone https://github.com/ISIS2503-E404-BancoAlpes/Sprint_3.git
-          cd Sprint_3
-          cd banco-app/bancoAlpes_app/
-          sudo pip3 install -r requirements.txt
-          sudo python3 manage.py makemigrations
-          sudo python3 manage.py migrate 
-          #python3 manage.py runserver 0.0.0.0:8080 &
-
-- type: compute.v1.instance
-  name: banco-app-editor-1
-  properties:
-    zone: us-central1-a
-    machineType: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/zones/us-central1-a/machineTypes/e2-micro
-    disks:
-    - deviceName: boot
-      type: PERSISTENT
-      boot: true
-      autoDelete: true
-      initializeParams:
-        sourceImage: https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20240307b
-    networkInterfaces:
-    - network: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/global/networks/default
-      networkIP: 10.128.0.55
-      accessConfigs:
-      - name: External NAT
-        type: ONE_TO_ONE_NAT
-    tags:
-      items: 
-      - rest-django
-    metadata:
-      items:
-      - key: startup-script
-        value: |
-          #!/bin/bash
-          sudo apt-get update
-          sudo apt install python3-pip -y
-          sudo mkdir /sprints
-          cd /sprints
-          sudo git clone https://github.com/ISIS2503-E404-BancoAlpes/Sprint_3.git
-          cd Sprint_3
-          cd banco-app/bancoAlpes_app/
-          sudo pip3 install -r requirements.txt
-          sudo python3 manage.py makemigrations
-          sudo python3 manage.py migrate 
-          #python3 manage.py runserver 0.0.0.0:8080 &
-
-- type: compute.v1.instance
-  name: banco-app-editor-2
-  properties:
-    zone: us-central1-a
-    machineType: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/zones/us-central1-a/machineTypes/e2-micro
-    disks:
-    - deviceName: boot
-      type: PERSISTENT
-      boot: true
-      autoDelete: true
-      initializeParams:
-        sourceImage: https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20240307b
-    networkInterfaces:
-    - network: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/global/networks/default
-      networkIP: 10.128.0.57
-      accessConfigs:
-      - name: External NAT
-        type: ONE_TO_ONE_NAT
-    tags:
-      items: 
-      - rest-django
-    metadata:
-      items:
-      - key: startup-script
-        value: |
-          #!/bin/bash
-          sudo apt-get update
-          sudo apt install python3-pip -y
-          sudo mkdir /sprints
-          cd /sprints
-          sudo git clone https://github.com/ISIS2503-E404-BancoAlpes/Sprint_3.git
-          git checkout pruebas
-          cd Sprint_3
-          cd banco-app/bancoAlpes_app/
-          sudo pip3 install -r requirements.txt
-          sudo python3 manage.py makemigrations
-          sudo python3 manage.py migrate 
-          #python3 manage.py runserver 0.0.0.0:8080 &
-
-
-#kong-instance
-
-- type: compute.v1.instance
-  name: kong-instance
-  properties:
-    zone: us-central1-a
-    machineType: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/zones/us-central1-a/machineTypes/e2-micro
-    disks:
-    - deviceName: boot
-      type: PERSISTENT
-      boot: true
-      autoDelete: true
-      initializeParams:
-        sourceImage: https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20240307b
-    networkInterfaces:
-    - network: https://www.googleapis.com/compute/v1/projects/sprint2-error404-isis2503/global/networks/default
-      networkIP: 10.128.0.51
-      accessConfigs:
-      - name: External NAT
-        type: ONE_TO_ONE_NAT
-    tags:
-      items: 
-      - kong-circuit-breaker
-    metadata:
-      items:
-      - key: startup-script
-        value: |
-          # Update package list and install necessary packages
-          sudo apt-get update
-          sudo apt-get install ca-certificates curl gnupg lsb-release -y
-
-          # Setup Docker repository
-          sudo mkdir -m 0755 -p /etc/apt/keyrings
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-          # Install Docker and Docker Compose
-          sudo apt-get update
-          sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
-          
-          # Add current user to Docker group
-          sudo groupadd docker
-          sudo usermod -aG docker $USER
-          newgrp docker
-
-          # Create Docker network for Kong
-         # sudo docker network create kong-net
-
-          # Start Kong with detailed logging
-        #  sudo docker run -d --name kong --network=kong-net -v "$(pwd):/kong/declarative/" \
-         #   -e "KONG_DATABASE=off" \
-        #    -e "KONG_DECLARATIVE_CONFIG=/kong/declarative/kong.yml" \
-         #   -e "KONG_PROXY_ACCESS_LOG=/dev/stdout" \
-         #   -e "KONG_ADMIN_ACCESS_LOG=/dev/stdout" \
-         #   -e "KONG_PROXY_ERROR_LOG=/dev/stderr" \
-         #   -e "KONG_ADMIN_ERROR_LOG=/dev/stderr" \
-         #   -e "KONG_ADMIN_LISTEN=0.0.0.0:8001" \
-         #   -e "KONG_ADMIN_GUI_URL=http://localhost:8002" \
-          #  -p 8000:8000 -p 8001:8001 -p 8002:8002 \
-          #  kong/kong-gateway:2.7.2.0-alpine
-
-          # Install Postfix for email functionality
-        #  sudo DEBIAN_FRONTEND=noninteractive apt-get install postfix mailutils -y
-          # Configure Postfix (simple configuration)
-       #   sudo postconf -e "relayhost = [smtp.example.com]:587"
-       #   sudo postconf -e "smtp_sasl_auth_enable = yes"
-       #   sudo postconf -e "smtp_sasl_security_options = noanonymous"
-       #   sudo postconf -e "smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd"
-       #   sudo postconf -e "smtp_use_tls = yes"
-       #   echo "[smtp.example.com]:587 username:password" | sudo tee /etc/postfix/sasl_passwd
-       #   sudo postmap /etc/postfix/sasl_passwd
-       #   sudo chmod 600 /etc/postfix/sasl_passwd
-       #   sudo systemctl restart postfix
-       #   sudo chmod +x /usr/local/bin/check_kong_errors.sh
-       #   (crontab -l 2>/dev/null; echo "*/5 * * * * /usr/local/bin/check_kong_errors.sh") | crontab -
+          #sudo apt-get update
+          #sudo apt install python3-pip -y
+          #sudo mkdir /labs
+          #cd /labs
+          #sudo git clone https://github.com/mlozanor/Auth0.git
+          #cd monitoring
+          #sudo pip3 install -r requirements.txt
+          #sudo python3 manage.py makemigrations
+          #sudo python3 manage.py migrate
