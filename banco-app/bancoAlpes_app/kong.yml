@@ -1,0 +1,88 @@
+_format_version: "2.1"
+
+services:
+  - host: solicitud_auth0_upstream
+    name: solicitud_auth0_service
+    protocol: http
+    routes:
+      - name: solicitud_auth0
+        paths:
+           - /complete/auth0
+        strip_path: false
+
+  - host: solicitud_consultas_upstream
+    name: solicitud_consultas_service
+    protocol: http
+    routes:
+      - name: solicitud_consultas
+        paths:
+           - /solicitudes
+        strip_path: false
+
+  - host: solicitud_editors_upstream
+    name: solicitud_editors_service
+    protocol: http
+    routes:
+      - name: solicitud_editors
+        paths:
+          - /solicitudescreate
+          - /solicitudesupdate/
+
+         
+        strip_path: false
+
+  - host: banco_app_upstream
+    name: banco_app_service
+    protocol: http
+    routes:
+      
+      - name: banco_app
+        paths:
+          - /
+        strip_path: false
+  
+upstreams:
+  - name: banco_app_upstream
+    targets:
+      - target: 10.128.0.53:8080
+        weight: 100
+      - target: 10.128.0.54:8080
+        weight: 100 
+      - target: 10.128.0.55:8080
+        weight: 100
+      - target: 10.128.0.57:8080
+        weight: 100
+    healthchecks:
+      threshold: 50
+      active:
+        http_path: /health-check/
+        timeout: 5
+        healthy:
+          interval: 5
+          successes: 2
+        unhealthy:
+          interval: 5
+          tcp_failures: 2
+
+  - name: solicitud_consultas_upstream
+    targets:
+      - target: 10.128.0.53:8080
+        weight: 100
+      - target: 10.128.0.54:8080
+        weight: 100 
+  - name: solicitud_auth0_service
+      - target: 10.128.0.53:8080
+        weight: 100
+      - target: 10.128.0.54:8080
+        weight: 100 
+      - target: 10.128.0.55:8080
+        weight: 100
+      - target: 10.128.0.57:8080
+        weight: 100   
+        
+  - name: solicitud_editors_upstream
+    targets:
+      - target: 10.128.0.55:8080
+        weight: 100
+      - target: 10.128.0.57:8080
+        weight: 100
