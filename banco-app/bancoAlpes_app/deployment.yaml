@@ -105,12 +105,12 @@ resources:
       - key: startup-script
         value: |
           #!/bin/bash
-          #sudo apt-get update
-          #sudo apt install python3-pip -y
-          #sudo mkdir /labs
-          #cd /labs
-          #sudo git clone https://github.com/mlozanor/Auth0.git
-          #cd monitoring
-          #sudo pip3 install -r requirements.txt
-          #sudo python3 manage.py makemigrations
-          #sudo python3 manage.py migrate
+          sudo apt-get update
+          sudo apt install python3-pip -y
+          sudo mkdir /labs
+          cd /labs
+          sudo git clone https://github.com/mlozanor/sprint3Auth0.git
+          cd monitoring
+          sudo pip3 install -r requirements.txt
+          sudo python3 manage.py makemigrations
+          sudo python3 manage.py migrate
